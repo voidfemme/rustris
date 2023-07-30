@@ -1,0 +1,35 @@
+extern crate termion;
+
+use std::io::{stdin, stdout, Write};
+use std::thread::sleep;
+use std::time::Duration;
+
+// Set up termion
+use termion::cursor;
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::raw::{IntoRawMode, RawTerminal};
+
+struct Field {
+    field_height: usize,
+    field_width: usize,
+}
+enum Tetromino {
+    Straight,
+    Square,
+    T,
+    L,
+    Skew,
+}
+
+fn rotate_tetromino() {
+    // Transpose the 2D array by swapping rows with columns, and then reversing each row.
+}
+
+fn main() {
+    let mut stdout = stdout().into_raw_mode()?;
+    let Field { field_height: 20, field_width: 10 };
+    let field_height: usize = 20;
+    let field_width: usize = 10;
+
+}
