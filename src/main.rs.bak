@@ -89,6 +89,7 @@ fn does_piece_fit(
 }
 
 fn main() -> Result<(), std::io::Error> {
+
     setup_logger("output.log").expect("Failed to initialize logger");
 
     // Create play field buffer
@@ -133,14 +134,12 @@ fn main() -> Result<(), std::io::Error> {
 
     // Spawn a thread to handle user input
     thread::spawn(move || {
-        info!("Spawned new thread!");
         let stdin = io::stdin();
         let mut stdout = io::stdout().into_raw_mode().unwrap();
 
         for key in stdin.keys() {
             match key {
                 Ok(key) => {
-                    info!("Input handling thread detected {:#?} input", key);
                     input_tx.send(key).unwrap();
                     if key == Key::Char('q') {
                         game_over_clone.store(true, Ordering::SeqCst);
@@ -183,7 +182,6 @@ fn main() -> Result<(), std::io::Error> {
                         &field,
                     ) {
                         n_current_x += 1;
-                        info!("'d' pressed; n_current_x = {n_current_x}");
                     }
                 }
                 Key::Char('a') => {
@@ -195,7 +193,6 @@ fn main() -> Result<(), std::io::Error> {
                         &field,
                     ) {
                         n_current_x -= 1;
-                        info!("'a' pressed; n_current_x = {n_current_x}");
                     }
                 }
                 Key::Char('s') => {
@@ -207,7 +204,6 @@ fn main() -> Result<(), std::io::Error> {
                         &field,
                     ) {
                         n_current_y -= 1;
-                        info!("'s' pressed; n_current_y = {n_current_y}");
                     }
                 }
                 Key::Char(' ') => {
@@ -222,21 +218,161 @@ fn main() -> Result<(), std::io::Error> {
                     {
                         // Rotate, but latch to stop wild spinning
                         n_current_rotation += 1;
-                        info!("<Space> pressed; n_current_rotation = {n_current_rotation}");
                         b_rotate_hold = false;
                     } else {
                         b_rotate_hold = true;
                     }
                 }
-                _ => break,
+                _ => continue,
             },
             Err(_e) => {
                 // No message this time, or an error occurred
                 // Just continue with the game loop
             }
         }
-    }
-    println!("Game state:\nn_current_x = {n_current_x}\nn_current_y = {n_current_y}\nn_current_rotation = {n_current_rotation}");
 
+        // Force the piece down the playfield if it's time
+        if b_force_down {
+            // Update difficulty every 50 pieces
+            n_speed_count = 0;
+            n_piece_count += 1;
+            if n_piece_count % 50 == 0 {
+                if n_speed >= 10 {
+                    n_speed -= 1;
+                }
+            }
+
+            // Test if piece can be moved down
+            if does_piece_fit(
+                n_current_piece,
+                n_current_rotation,
+                n_current_x,
+                n_current_y + 1,
+                &field,
+            ) {
+                if n_current_y > 0 {
+                    n_current_y -= 1
+                };
+            } else {
+                // It can't! Lock the piece in place
+                for px in 0..4 {
+                    for py in 0..4 {
+                        if px == 0 || px == N_FIELD_WIDTH - 1 || py == N_FIELD_HEIGHT - 1 {
+                            field[py as usize][px as usize] = 8; // ASCII for border
+                        } else {
+                            field[py as usize][px as usize] = 0; // ASCII for empty space
+                        }
+                    }
+                }
+
+                #[cfg(debug_assertions)]
+                dbg!();
+
+                // Check for lines
+                for py in 0..4 {
+                    if n_current_y + py < N_FIELD_HEIGHT - 1 {
+                        let mut b_line: bool = true;
+                        for px in 0..N_FIELD_WIDTH - 1 {
+                            b_line &= field[(n_current_y + py) as usize][px as usize] != '.' as u8;
+                        }
+
+                        if b_line {
+                            // Remove Line, set to =
+                            for px in 0..N_FIELD_WIDTH - 1 {
+                                field[(n_current_y + py) as usize][px as usize] = '=' as u8;
+                                v_lines.push(n_current_y + py);
+                            }
+                        }
+                    }
+                }
+
+                #[cfg(debug_assertions)]
+                dbg!();
+
+                n_score += 25;
+                if !v_lines.is_empty() {
+                    n_score += (1 << v_lines.len()) * 100;
+                }
+
+                // Pick New piece
+                n_current_x = N_FIELD_WIDTH / 2;
+                n_current_y = 0;
+                n_current_rotation = 0;
+                n_current_piece = rng.gen_range(0..7);
+
+                // If a piece does not fit straight away, game over!
+                b_game_over = !does_piece_fit(
+                    n_current_piece,
+                    n_current_rotation,
+                    n_current_x,
+                    n_current_y,
+                    &field,
+                );
+            }
+        }
+
+        // DISPLAY ================================
+        // Draw field.
+        for x in 0..N_FIELD_WIDTH {
+            for y in 0..N_FIELD_HEIGHT {
+                info!(
+                    "field[y as usize][x as usize] = {}",
+                    field[y as usize][x as usize]
+                );
+                screen[(y + 2) as usize][(x + 2) as usize] = ' ';
+            }
+        }
+
+        // Draw current piece
+        for px in 0..4 {
+            for py in 0..4 {
+                if tetrominos[n_current_piece as usize].shape()
+                    [rotate(px, py, n_current_rotation) as usize]
+                    != '.'
+                {
+                    screen[(n_current_y + py + 2) as usize][(n_current_x + px + 2) as usize] =
+                        (n_current_piece + 65) as char;
+                }
+            }
+        }
+
+        // Draw Score
+        write!(
+            stdout(),
+            "{}SCORE: {}",
+            cursor::Goto(2, N_FIELD_WIDTH as u16 + 6),
+            n_score
+        )?;
+
+        // Animate Line Completion
+        if !v_lines.is_empty() {
+            // Display frame (cheekily to draw lines)
+            write!(stdout(), "{}{:?}", cursor::Goto(1, 1), screen)?;
+            stdout().flush()?;
+            std::thread::sleep(std::time::Duration::from_millis(400));
+
+            for v in &mut v_lines {
+                for px in 1..N_FIELD_WIDTH - 1 {
+                    for py in (1..=*v).rev() {
+                        field[py as usize][px as usize] = field[(py - 1) as usize][px as usize];
+                        field[*v as usize][px as usize] = 0;
+                    }
+                }
+            }
+            v_lines.clear();
+        }
+
+        // Display frame
+        write!(stdout(), "{}{:?}", cursor::Goto(1, 1), screen)?;
+        stdout().flush()?;
+
+        // Check the game over flag to see if the game should end:
+        if game_over.load(Ordering::SeqCst) || b_game_over {
+            println!("Received 'q' input, ending game.");
+            break;
+        }
+    }
+    println!("Game Over!! Score: {}", n_score);
+    SBDebugger::terminate();
     Ok(())
 }
