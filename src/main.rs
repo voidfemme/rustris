@@ -90,6 +90,8 @@ fn does_piece_fit(
 
 fn main() -> Result<(), std::io::Error> {
     setup_logger("output.log").expect("Failed to initialize logger");
+    let stdout = io::stdout();
+    let mut stdout = stdout.lock().into_raw_mode()?;
 
     // Create play field buffer
     let mut field: Vec<Vec<u8>> =
@@ -236,7 +238,17 @@ fn main() -> Result<(), std::io::Error> {
             }
         }
     }
-    println!("Game state:\nn_current_x = {n_current_x}\nn_current_y = {n_current_y}\nn_current_rotation = {n_current_rotation}");
+    info!("Game state:\nn_current_x = {n_current_x}\nn_current_y = {n_current_y}\nn_current_rotation = {n_current_rotation}");
+    for (y, row) in field.iter().enumerate() {
+        for (x, &ch) in row.iter().enumerate() {
+            write!(
+                stdout,
+                "{}{}",
+                cursor::Goto(x as u16 + 1, y as u16 + 1),
+                &ch
+            )?;
+        }
+    }
 
     Ok(())
 }

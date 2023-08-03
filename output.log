@@ -40,3 +40,73 @@
 2023-08-03 07:55:47 [INFO] src/main.rs:143 Input handling thread detected Char(
     'q',
 ) input
+2023-08-03 12:30:04 [INFO] src/main.rs:138 Spawned new thread!
+2023-08-03 12:30:07 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'a',
+) input
+2023-08-03 12:30:07 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'w',
+) input
+2023-08-03 12:30:07 [INFO] src/main.rs:145 Input handling thread detected Char(
+    's',
+) input
+2023-08-03 12:30:07 [INFO] src/main.rs:241 Game state:
+n_current_x = 6
+n_current_y = 0
+n_current_rotation = 0
+2023-08-03 12:30:10 [INFO] src/main.rs:138 Spawned new thread!
+2023-08-03 12:30:11 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'a',
+) input
+2023-08-03 12:30:11 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'd',
+) input
+2023-08-03 12:30:12 [INFO] src/main.rs:145 Input handling thread detected Char(
+    's',
+) input
+2023-08-03 12:30:12 [INFO] src/main.rs:145 Input handling thread detected Char(
+    's',
+) input
+2023-08-03 12:30:12 [INFO] src/main.rs:145 Input handling thread detected Char(
+    's',
+) input
+2023-08-03 12:30:13 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'a',
+) input
+2023-08-03 12:30:13 [INFO] src/main.rs:145 Input handling thread detected Char(
+    's',
+) input
+2023-08-03 12:30:13 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'd',
+) input
+2023-08-03 12:30:13 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'd',
+) input
+2023-08-03 12:30:14 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'd',
+) input
+2023-08-03 12:30:14 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'a',
+) input
+2023-08-03 12:30:14 [INFO] src/main.rs:145 Input handling thread detected Char(
+    's',
+) input
+2023-08-03 12:30:15 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'd',
+) input
+2023-08-03 12:30:15 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'd',
+) input
+2023-08-03 12:30:16 [INFO] src/main.rs:145 Input handling thread detected Char(
+    's',
+) input
+2023-08-03 12:30:16 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'a',
+) input
+2023-08-03 12:30:17 [INFO] src/main.rs:145 Input handling thread detected Char(
+    '\n',
+) input
+2023-08-03 12:30:17 [INFO] src/main.rs:241 Game state:
+n_current_x = 6
+n_current_y = 0
+n_current_rotation = 0
