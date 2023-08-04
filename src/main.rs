@@ -4,7 +4,7 @@ use chrono;
 use fern::Dispatch;
 use log::info;
 use rand::Rng;
-use std::io;
+use std::io as std_io;
 use std::io::{stdout, Write};
 use std::sync::mpsc;
 use std::sync::{
@@ -16,10 +16,10 @@ use std::thread::sleep;
 use std::time::Duration;
 
 // Set up termion
-use termion::cursor;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
+use termion::{clear, cursor};
 
 use shapes::get_shapes;
 
@@ -90,7 +90,7 @@ fn does_piece_fit(
 
 fn main() -> Result<(), std::io::Error> {
     setup_logger("output.log").expect("Failed to initialize logger");
-    let stdout = io::stdout();
+    let stdout = std_io::stdout();
     let mut stdout = stdout.lock().into_raw_mode()?;
 
     // Create play field buffer
@@ -136,8 +136,8 @@ fn main() -> Result<(), std::io::Error> {
     // Spawn a thread to handle user input
     thread::spawn(move || {
         info!("Spawned new thread!");
-        let stdin = io::stdin();
-        let mut stdout = io::stdout().into_raw_mode().unwrap();
+        let stdin = std_io::stdin();
+        let mut stdout = std_io::stdout().into_raw_mode().unwrap();
 
         for key in stdin.keys() {
             match key {
@@ -169,8 +169,8 @@ fn main() -> Result<(), std::io::Error> {
         }
         let b_force_down = n_speed_count == n_speed;
         if b_force_down == true {
-            println!("Speeding up!");
-            println!("{}", n_speed_count);
+            write!(stdout, "{} speeding up! {}", cursor::Goto(35, 1), n_speed)?;
+            stdout.flush()?;
         }
 
         // INPUT ========================================
@@ -239,14 +239,17 @@ fn main() -> Result<(), std::io::Error> {
         }
     }
     info!("Game state:\nn_current_x = {n_current_x}\nn_current_y = {n_current_y}\nn_current_rotation = {n_current_rotation}");
+
+    write!(stdout, "{}", clear::All)?;
     for (y, row) in field.iter().enumerate() {
         for (x, &ch) in row.iter().enumerate() {
             write!(
                 stdout,
                 "{}{}",
-                cursor::Goto(x as u16 + 1, y as u16 + 1),
+                cursor::Goto(x as u16 + 2, y as u16 + 2),
                 &ch
             )?;
+            stdout.flush()?;
         }
     }
 
