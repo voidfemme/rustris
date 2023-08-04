@@ -6,11 +6,11 @@ use log::info;
 use rand::Rng;
 use std::io as std_io;
 use std::io::{self, Write};
+use std::sync::mpsc;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
-use std::sync::{mpsc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
@@ -18,7 +18,6 @@ use std::time::Duration;
 // Set up termion
 use termion::event::Key;
 use termion::input::TermRead;
-use termion::raw::{IntoRawMode, RawTerminal};
 use termion::{clear, cursor};
 
 use shapes::get_shapes;
@@ -167,10 +166,6 @@ fn main() -> Result<(), std::io::Error> {
             n_speed_count += 1;
         }
         let b_force_down = n_speed_count == n_speed;
-        if b_force_down {
-            write!(handle, "{} speeding up! {}", cursor::Goto(35, 1), n_speed)?;
-            handle.flush()?;
-        }
 
         // INPUT ========================================
         match rx.try_recv() {
@@ -236,8 +231,65 @@ fn main() -> Result<(), std::io::Error> {
                 // Just continue with the game loop
             }
         }
-        info!("Game state:\nn_current_x = {n_current_x}\nn_current_y = {n_current_y}\nn_current_rotation = {n_current_rotation}");
 
+        // Force the piece down the playfield if it's time
+        if b_force_down {
+            // Update the difficulty every 50 pieces.
+            n_speed_count = 0;
+            n_piece_count += 1;
+            if n_piece_count % 50 == 0 {
+                if n_speed >= 10 {
+                    n_speed -= 1;
+                }
+            }
+
+            // Test if the piece can be moved down
+            if does_piece_fit(
+                n_current_piece,
+                n_current_rotation,
+                n_current_x,
+                n_current_y,
+                &field,
+            ) {
+                if n_current_y > 0 {
+                    n_current_y -= 1
+                };
+            } else {
+                // It cant! lock the piece in place
+                for px in 0..4 {
+                    for py in 0..4 {
+                        if px == 0 || px == N_FIELD_WIDTH - 1 || py == N_FIELD_HEIGHT - 1 {
+                            field[py as usize][px as usize] = 8; // ASCII for border
+                        } else {
+                            field[py as usize][px as usize] = 0; // ASCII for empty space
+                        }
+                    }
+                }
+
+                // Check for lines
+                for py in 0..4 {
+                    if n_current_y + py < N_FIELD_HEIGHT - 1 {
+                        let mut b_line: bool = true;
+                        for px in 0..N_FIELD_WIDTH - 1 {
+                            b_line &= field[(n_current_y + py) as usize][px as usize] != '.' as u8;
+                        }
+
+                        if b_line {
+                            // Remove lines, set to =
+                            for px in 0..N_FIELD_WIDTH - 1 {
+                                field[(n_current_y + py) as usize][px as usize] = 7;
+                                v_lines.push(n_current_y + py);
+                            }
+                        }
+                    }
+                }
+
+                n_score += 25;
+                if !v_lines.is_empty() {
+                    n_score += (1 << v_lines.len()) * 100;
+                }
+            }
+        }
         write!(handle, "{}", clear::All)?;
         for (y, row) in field.iter().enumerate() {
             for (x, &ch) in row.iter().enumerate() {

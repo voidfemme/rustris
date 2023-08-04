@@ -244,27 +244,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57bcfdad1b858c2db7c38303a6d2ad4dfaf5eb53dfeb0910128b2c26d6158503"
 
 [[package]]
-name = "lldb"
-version = "0.0.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ead3acd21ea6f043804677c634f22261d5b573354f894fc9bf5a7c51b3494b2"
-dependencies = [
- "libc",
- "lldb-sys",
-]
-
-[[package]]
-name = "lldb-sys"
-version = "0.0.29"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4823992d90809c75bb025e9666759ccd7be2362863fc88af6c21ba6916e4e5f"
-dependencies = [
- "bitflags 1.3.2",
- "cc",
- "libc",
-]
-
-[[package]]
 name = "log"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -448,7 +427,6 @@ dependencies = [
  "chrono",
  "env_logger",
  "fern",
- "lldb",
  "log",
  "rand",
  "termion",
