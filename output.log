@@ -419,3 +419,11 @@ n_current_rotation = 0
 n_current_x = 6
 n_current_y = 0
 n_current_rotation = 0
+2023-08-03 18:46:18 [INFO] src/main.rs:138 Spawned new thread!
+2023-08-03 18:46:20 [INFO] src/main.rs:145 Input handling thread detected Char(
+    'q',
+) input
+2023-08-03 18:46:20 [INFO] src/main.rs:241 Game state:
+n_current_x = 6
+n_current_y = 0
+n_current_rotation = 0

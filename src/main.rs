@@ -18,7 +18,7 @@ use std::time::Duration;
 // Set up termion
 use termion::event::Key;
 use termion::input::TermRead;
-use termion::raw::IntoRawMode;
+use termion::raw::{IntoRawMode, RawTerminal};
 use termion::{clear, cursor};
 
 use shapes::get_shapes;
@@ -91,7 +91,7 @@ fn does_piece_fit(
 fn main() -> Result<(), std::io::Error> {
     setup_logger("output.log").expect("Failed to initialize logger");
     let stdout = std_io::stdout();
-    let mut stdout = stdout.lock().into_raw_mode()?;
+    let mut stdout: RawTerminal<_> = stdout.lock().into_raw_mode()?;
 
     // Create play field buffer
     let mut field: Vec<Vec<u8>> =
@@ -105,9 +105,9 @@ fn main() -> Result<(), std::io::Error> {
     for x in 0..N_FIELD_WIDTH {
         for y in 0..N_FIELD_HEIGHT {
             if x == 0 || x == N_FIELD_WIDTH - 1 || y == N_FIELD_HEIGHT - 1 {
-                field[y as usize][x as usize] = '#' as u8; // ASCII for border
+                field[y as usize][x as usize] = 8; // ASCII for border
             } else {
-                field[y as usize][x as usize] = ' ' as u8; // ASCII for empty space
+                field[y as usize][x as usize] = 0; // ASCII for empty space
             }
         }
     }
