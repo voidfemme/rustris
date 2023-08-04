@@ -167,7 +167,7 @@ fn main() -> Result<(), std::io::Error> {
             n_speed_count += 1;
         }
         let b_force_down = n_speed_count == n_speed;
-        if b_force_down == true {
+        if b_force_down {
             write!(handle, "{} speeding up! {}", cursor::Goto(35, 1), n_speed)?;
             handle.flush()?;
         }
@@ -245,7 +245,7 @@ fn main() -> Result<(), std::io::Error> {
                     handle,
                     "{}{}",
                     cursor::Goto(x as u16 + 2, y as u16 + 2),
-                    &ch
+                    LOOKUP[ch as usize]
                 )?;
                 handle.flush()?;
             }
