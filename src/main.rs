@@ -5,12 +5,12 @@ use fern::Dispatch;
 use log::info;
 use rand::Rng;
 use std::io as std_io;
-use std::io::{stdout, Write};
-use std::sync::mpsc;
+use std::io::{self, Write};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
+use std::sync::{mpsc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
@@ -90,8 +90,7 @@ fn does_piece_fit(
 
 fn main() -> Result<(), std::io::Error> {
     setup_logger("output.log").expect("Failed to initialize logger");
-    let stdout = std_io::stdout();
-    let mut stdout: RawTerminal<_> = stdout.lock().into_raw_mode()?;
+    let stdout = Mutex::new(io::stdout());
 
     // Create play field buffer
     let mut field: Vec<Vec<u8>> =
@@ -137,7 +136,7 @@ fn main() -> Result<(), std::io::Error> {
     thread::spawn(move || {
         info!("Spawned new thread!");
         let stdin = std_io::stdin();
-        let mut stdout = std_io::stdout().into_raw_mode().unwrap();
+        let mut stdout = stdout.lock().unwrap();
 
         for key in stdin.keys() {
             match key {
@@ -157,6 +156,7 @@ fn main() -> Result<(), std::io::Error> {
         }
     });
 
+    let mut stdout = stdout.lock().unwrap();
     loop
     /* Main game loop */
     {
