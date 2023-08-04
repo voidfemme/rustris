@@ -2,10 +2,10 @@ mod shapes;
 
 use chrono;
 use fern::Dispatch;
-use log::{info, warn};
+use log::info;
 use rand::Rng;
-use std::io as std_io;
-use std::io::{self, Write};
+use std::io;
+use std::io::{stdout, Write};
 use std::sync::mpsc;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -14,12 +14,12 @@ use std::sync::{
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-use termion::raw::IntoRawMode;
 
 // Set up termion
+use termion::cursor;
 use termion::event::Key;
 use termion::input::TermRead;
-use termion::{clear, cursor};
+use termion::raw::IntoRawMode;
 
 use shapes::get_shapes;
 
@@ -89,12 +89,8 @@ fn does_piece_fit(
 }
 
 fn main() -> Result<(), std::io::Error> {
-    setup_logger("output.log").expect("Failed to initialize logger");
-    let stdout = io::stdout();
-    let mut handle = stdout.lock().into_raw_mode()?;
 
-    write!(handle, "{}", termion::cursor::Hide)?;
-    handle.flush()?;
+    setup_logger("output.log").expect("Failed to initialize logger");
 
     // Create play field buffer
     let mut field: Vec<Vec<u8>> =
@@ -108,9 +104,9 @@ fn main() -> Result<(), std::io::Error> {
     for x in 0..N_FIELD_WIDTH {
         for y in 0..N_FIELD_HEIGHT {
             if x == 0 || x == N_FIELD_WIDTH - 1 || y == N_FIELD_HEIGHT - 1 {
-                field[y as usize][x as usize] = 8; // ASCII for border
+                field[y as usize][x as usize] = '#' as u8; // ASCII for border
             } else {
-                field[y as usize][x as usize] = 0; // ASCII for empty space
+                field[y as usize][x as usize] = ' ' as u8; // ASCII for empty space
             }
         }
     }
@@ -125,7 +121,7 @@ fn main() -> Result<(), std::io::Error> {
     let mut n_speed_count: u8 = 0;
     let mut b_rotate_hold: bool = true;
     let mut n_piece_count = 0;
-    let mut n_score: i32 = 0;
+    let mut n_score = 0;
     let mut v_lines = Vec::<u8>::new();
     let mut rng = rand::thread_rng();
     let mut b_game_over: bool = false;
@@ -138,31 +134,23 @@ fn main() -> Result<(), std::io::Error> {
 
     // Spawn a thread to handle user input
     thread::spawn(move || {
-        let result: Result<(), Box<dyn std::error::Error>> = (|| {
-            info!("Spawned new thread!");
-            let stdin = std_io::stdin();
+        let stdin = io::stdin();
+        let mut stdout = io::stdout().into_raw_mode().unwrap();
 
-            for key in stdin.keys() {
-                match key {
-                    Ok(key) => {
-                        info!("Input handling thread detected {:#?} input", key);
-                        input_tx.send(key)?;
-                        if key == Key::Char('q') {
-                            game_over_clone.store(true, Ordering::SeqCst);
-                            break;
-                        }
-                    }
-                    Err(err) => {
-                        info!("Input error: {}", err);
+        for key in stdin.keys() {
+            match key {
+                Ok(key) => {
+                    input_tx.send(key).unwrap();
+                    if key == Key::Char('q') {
+                        game_over_clone.store(true, Ordering::SeqCst);
                         break;
                     }
                 }
+                Err(err) => {
+                    writeln!(stdout, "Input error: {}", err).unwrap();
+                    break;
+                }
             }
-            Ok(())
-        })();
-        if let Err(e) = result {
-            // Handle the error here
-            warn!("An error occurred: {}", e);
         }
     });
 
@@ -170,13 +158,17 @@ fn main() -> Result<(), std::io::Error> {
     /* Main game loop */
     {
         // TIMING =======================================
-        sleep(Duration::from_millis(14));
+        sleep(Duration::from_millis(10));
         if n_speed_count == 255 {
             n_speed_count = 0;
         } else {
             n_speed_count += 1;
         }
         let b_force_down = n_speed_count == n_speed;
+        if b_force_down == true {
+            println!("Speeding up!");
+            println!("{}", n_speed_count);
+        }
 
         // INPUT ========================================
         match rx.try_recv() {
@@ -190,7 +182,6 @@ fn main() -> Result<(), std::io::Error> {
                         &field,
                     ) {
                         n_current_x += 1;
-                        info!("'d' pressed; n_current_x = {n_current_x}");
                     }
                 }
                 Key::Char('a') => {
@@ -202,7 +193,6 @@ fn main() -> Result<(), std::io::Error> {
                         &field,
                     ) {
                         n_current_x -= 1;
-                        info!("'a' pressed; n_current_x = {n_current_x}");
                     }
                 }
                 Key::Char('s') => {
@@ -214,7 +204,6 @@ fn main() -> Result<(), std::io::Error> {
                         &field,
                     ) {
                         n_current_y -= 1;
-                        info!("'s' pressed; n_current_y = {n_current_y}");
                     }
                 }
                 Key::Char(' ') => {
@@ -229,13 +218,12 @@ fn main() -> Result<(), std::io::Error> {
                     {
                         // Rotate, but latch to stop wild spinning
                         n_current_rotation += 1;
-                        info!("<Space> pressed; n_current_rotation = {n_current_rotation}");
                         b_rotate_hold = false;
                     } else {
                         b_rotate_hold = true;
                     }
                 }
-                _ => break,
+                _ => continue,
             },
             Err(_e) => {
                 // No message this time, or an error occurred
@@ -245,7 +233,7 @@ fn main() -> Result<(), std::io::Error> {
 
         // Force the piece down the playfield if it's time
         if b_force_down {
-            // Update the difficulty every 50 pieces.
+            // Update difficulty every 50 pieces
             n_speed_count = 0;
             n_piece_count += 1;
             if n_piece_count % 50 == 0 {
@@ -254,19 +242,19 @@ fn main() -> Result<(), std::io::Error> {
                 }
             }
 
-            // Test if the piece can be moved down
+            // Test if piece can be moved down
             if does_piece_fit(
                 n_current_piece,
                 n_current_rotation,
                 n_current_x,
-                n_current_y,
+                n_current_y + 1,
                 &field,
             ) {
                 if n_current_y > 0 {
                     n_current_y -= 1
                 };
             } else {
-                // It cant! lock the piece in place
+                // It can't! Lock the piece in place
                 for px in 0..4 {
                     for py in 0..4 {
                         if px == 0 || px == N_FIELD_WIDTH - 1 || py == N_FIELD_HEIGHT - 1 {
@@ -277,6 +265,9 @@ fn main() -> Result<(), std::io::Error> {
                     }
                 }
 
+                #[cfg(debug_assertions)]
+                dbg!();
+
                 // Check for lines
                 for py in 0..4 {
                     if n_current_y + py < N_FIELD_HEIGHT - 1 {
@@ -286,22 +277,24 @@ fn main() -> Result<(), std::io::Error> {
                         }
 
                         if b_line {
-                            // Remove lines, set to =
+                            // Remove Line, set to =
                             for px in 0..N_FIELD_WIDTH - 1 {
-                                field[(n_current_y + py) as usize][px as usize] = 7;
+                                field[(n_current_y + py) as usize][px as usize] = '=' as u8;
                                 v_lines.push(n_current_y + py);
                             }
                         }
                     }
                 }
 
+                #[cfg(debug_assertions)]
+                dbg!();
+
                 n_score += 25;
                 if !v_lines.is_empty() {
-                    let lines = v_lines.len().min(10);
-                    n_score += 2_i32.pow(lines as u32) * 100;
+                    n_score += (1 << v_lines.len()) * 100;
                 }
 
-                // Pick new piece at random
+                // Pick New piece
                 n_current_x = N_FIELD_WIDTH / 2;
                 n_current_y = 0;
                 n_current_rotation = 0;
@@ -315,14 +308,17 @@ fn main() -> Result<(), std::io::Error> {
                     n_current_y,
                     &field,
                 );
-                if b_game_over {}
             }
         }
 
-        // DISPLAY ===========================
-        // Draw field
+        // DISPLAY ================================
+        // Draw field.
         for x in 0..N_FIELD_WIDTH {
             for y in 0..N_FIELD_HEIGHT {
+                info!(
+                    "field[y as usize][x as usize] = {}",
+                    field[y as usize][x as usize]
+                );
                 screen[(y + 2) as usize][(x + 2) as usize] = ' ';
             }
         }
@@ -340,29 +336,43 @@ fn main() -> Result<(), std::io::Error> {
             }
         }
 
-        // Draw score
+        // Draw Score
         write!(
-            handle,
+            stdout(),
             "{}SCORE: {}",
-            cursor::Goto(N_FIELD_WIDTH as u16 + 6, 2),
+            cursor::Goto(2, N_FIELD_WIDTH as u16 + 6),
             n_score
         )?;
 
-        write!(handle, "{}", clear::All)?;
-        for (y, row) in field.iter().enumerate() {
-            for (x, &ch) in row.iter().enumerate() {
-                write!(
-                    handle,
-                    "{}{}",
-                    cursor::Goto(x as u16 + 2, y as u16 + 2),
-                    LOOKUP[ch as usize]
-                )?;
-                handle.flush()?;
-            }
-        }
-    } // END MAIN LOOP
+        // Animate Line Completion
+        if !v_lines.is_empty() {
+            // Display frame (cheekily to draw lines)
+            write!(stdout(), "{}{:?}", cursor::Goto(1, 1), screen)?;
+            stdout().flush()?;
+            std::thread::sleep(std::time::Duration::from_millis(400));
 
-    write!(handle, "{}", cursor::Show)?;
-    handle.flush()?;
+            for v in &mut v_lines {
+                for px in 1..N_FIELD_WIDTH - 1 {
+                    for py in (1..=*v).rev() {
+                        field[py as usize][px as usize] = field[(py - 1) as usize][px as usize];
+                        field[*v as usize][px as usize] = 0;
+                    }
+                }
+            }
+            v_lines.clear();
+        }
+
+        // Display frame
+        write!(stdout(), "{}{:?}", cursor::Goto(1, 1), screen)?;
+        stdout().flush()?;
+
+        // Check the game over flag to see if the game should end:
+        if game_over.load(Ordering::SeqCst) || b_game_over {
+            println!("Received 'q' input, ending game.");
+            break;
+        }
+    }
+    println!("Game Over!! Score: {}", n_score);
+    SBDebugger::terminate();
     Ok(())
 }
