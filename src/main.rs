@@ -90,7 +90,8 @@ fn does_piece_fit(
 
 fn main() -> Result<(), std::io::Error> {
     setup_logger("output.log").expect("Failed to initialize logger");
-    let stdout = Mutex::new(io::stdout());
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
 
     // Create play field buffer
     let mut field: Vec<Vec<u8>> =
@@ -136,7 +137,6 @@ fn main() -> Result<(), std::io::Error> {
     thread::spawn(move || {
         info!("Spawned new thread!");
         let stdin = std_io::stdin();
-        let mut stdout = stdout.lock().unwrap();
 
         for key in stdin.keys() {
             match key {
@@ -149,14 +149,13 @@ fn main() -> Result<(), std::io::Error> {
                     }
                 }
                 Err(err) => {
-                    writeln!(stdout, "Input error: {}", err).unwrap();
+                    info!("Input error: {}", err);
                     break;
                 }
             }
         }
     });
 
-    let mut stdout = stdout.lock().unwrap();
     loop
     /* Main game loop */
     {
@@ -169,8 +168,8 @@ fn main() -> Result<(), std::io::Error> {
         }
         let b_force_down = n_speed_count == n_speed;
         if b_force_down == true {
-            write!(stdout, "{} speeding up! {}", cursor::Goto(35, 1), n_speed)?;
-            stdout.flush()?;
+            write!(handle, "{} speeding up! {}", cursor::Goto(35, 1), n_speed)?;
+            handle.flush()?;
         }
 
         // INPUT ========================================
@@ -237,19 +236,19 @@ fn main() -> Result<(), std::io::Error> {
                 // Just continue with the game loop
             }
         }
-    }
-    info!("Game state:\nn_current_x = {n_current_x}\nn_current_y = {n_current_y}\nn_current_rotation = {n_current_rotation}");
+        info!("Game state:\nn_current_x = {n_current_x}\nn_current_y = {n_current_y}\nn_current_rotation = {n_current_rotation}");
 
-    write!(stdout, "{}", clear::All)?;
-    for (y, row) in field.iter().enumerate() {
-        for (x, &ch) in row.iter().enumerate() {
-            write!(
-                stdout,
-                "{}{}",
-                cursor::Goto(x as u16 + 2, y as u16 + 2),
-                &ch
-            )?;
-            stdout.flush()?;
+        write!(handle, "{}", clear::All)?;
+        for (y, row) in field.iter().enumerate() {
+            for (x, &ch) in row.iter().enumerate() {
+                write!(
+                    handle,
+                    "{}{}",
+                    cursor::Goto(x as u16 + 2, y as u16 + 2),
+                    &ch
+                )?;
+                handle.flush()?;
+            }
         }
     }
 
