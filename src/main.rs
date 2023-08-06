@@ -183,7 +183,7 @@ fn main() -> Result<(), std::io::Error> {
             // INPUT ========================================
             match rx.try_recv() {
                 Ok(key) => match key {
-                    Key::Char('d') => {
+                    Key::Char('d') | Key::Right => {
                         if does_it_fit(
                             n_current_piece,
                             n_current_rotation,
@@ -195,7 +195,7 @@ fn main() -> Result<(), std::io::Error> {
                             info!("'d' pressed; n_current_x = {n_current_x}");
                         }
                     }
-                    Key::Char('a') => {
+                    Key::Char('a') | Key::Left => {
                         if does_it_fit(
                             n_current_piece,
                             n_current_rotation,
@@ -207,7 +207,7 @@ fn main() -> Result<(), std::io::Error> {
                             info!("'a' pressed; n_current_x = {n_current_x}");
                         }
                     }
-                    Key::Char('s') => {
+                    Key::Char('s') | Key::Down => {
                         if does_it_fit(
                             n_current_piece,
                             n_current_rotation,
@@ -219,7 +219,7 @@ fn main() -> Result<(), std::io::Error> {
                             info!("'s' pressed; n_current_y = {n_current_y}");
                         }
                     }
-                    Key::Char(' ') => {
+                    Key::Char(' ') | Key::Up => {
                         if b_rotate_hold
                             && does_it_fit(
                                 n_current_piece,
@@ -253,12 +253,16 @@ fn main() -> Result<(), std::io::Error> {
                 }
             }
 
+            // Draw tetromino
             for px in 0..4 {
                 for py in 0..4 {
                     if (tetrominos[n_current_piece as usize].shape()
                         [rotate(px, py, n_current_rotation) as usize])
-                        != '.'
-                    {}
+                        != 0
+                    {
+                        screen[(n_current_y + py + 2) as usize][(n_current_x + px + 2) as usize] =
+                            LOOKUP[n_current_piece as usize];
+                    }
                 }
             }
 
