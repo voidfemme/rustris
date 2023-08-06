@@ -24,8 +24,6 @@ use shapes::get_shapes;
 
 const N_FIELD_WIDTH: u8 = 12;
 const N_FIELD_HEIGHT: u8 = 18;
-const N_SCREEN_WIDTH: u8 = 80;
-const N_SCREEN_HEIGHT: u8 = 30;
 const LOOKUP: [char; 11] = [' ', 'A', 'B', 'C', 'D', 'F', 'G', '=', '#', '.', 'X'];
 
 fn setup_logger(log_file: &str) -> Result<(), fern::InitError> {
@@ -103,8 +101,8 @@ fn main() -> Result<(), std::io::Error> {
             vec![vec![' ' as u8; N_FIELD_WIDTH as usize]; N_FIELD_HEIGHT as usize];
 
         // Create screen buffer
-        let mut screen: Vec<Vec<char>> =
-            vec![vec![' '; N_SCREEN_WIDTH as usize]; N_SCREEN_HEIGHT as usize];
+        let mut screen: Vec<Vec<u8>> =
+            vec![vec![' ' as u8; N_FIELD_WIDTH as usize]; N_FIELD_HEIGHT as usize];
 
         // Create Tetris play field and border
         for x in 0..N_FIELD_WIDTH {
@@ -119,7 +117,7 @@ fn main() -> Result<(), std::io::Error> {
 
         // Game logic
         let tetrominos = get_shapes();
-        let mut n_current_piece: u8 = 0;
+        let mut n_current_piece: u8 = 1;
         let mut n_current_rotation: u8 = 0;
         let mut n_current_x: u8 = N_FIELD_WIDTH / 2;
         let mut n_current_y: u8 = 0;
@@ -172,7 +170,7 @@ fn main() -> Result<(), std::io::Error> {
         /* Main game loop */
         {
             // TIMING =======================================
-            sleep(Duration::from_millis(14));
+            sleep(Duration::from_millis(50));
             if n_speed_count == 255 {
                 n_speed_count = 0;
             } else {
@@ -215,7 +213,7 @@ fn main() -> Result<(), std::io::Error> {
                             n_current_y + 1,
                             &field,
                         ) {
-                            n_current_y -= 1;
+                            n_current_y += 1;
                             info!("'s' pressed; n_current_y = {n_current_y}");
                         }
                     }
@@ -245,11 +243,38 @@ fn main() -> Result<(), std::io::Error> {
                 }
             }
 
+            // Force the piece down the playfield if it's time
+            if b_force_down {
+                // Test if piece can be moved down
+                if does_it_fit(
+                    n_current_piece,
+                    n_current_rotation,
+                    n_current_x,
+                    n_current_y + 1,
+                    &field,
+                ) {
+                    n_current_y += 1;
+                } else {
+                    // It can't! lock the piece in place
+                    for px in 0..4 {
+                        for py in 0..4 {
+                            if tetrominos[n_current_piece as usize].shape()
+                                [rotate(px, py, n_current_rotation) as usize]
+                                != 0
+                            {
+                                field[(n_current_y + py) as usize][(n_current_x + px) as usize] =
+                                    n_current_piece + 1;
+                            }
+                        }
+                    }
+                }
+            }
+
             // DISPLAY ===========================
             // Draw field
             for x in 0..N_FIELD_WIDTH {
                 for y in 0..N_FIELD_HEIGHT {
-                    screen[(y + 2) as usize][(x + 2) as usize] = ' ';
+                    screen[y as usize][x as usize] = 0;
                 }
             }
 
@@ -260,8 +285,8 @@ fn main() -> Result<(), std::io::Error> {
                         [rotate(px, py, n_current_rotation) as usize])
                         != 0
                     {
-                        screen[(n_current_y + py + 2) as usize][(n_current_x + px + 2) as usize] =
-                            LOOKUP[n_current_piece as usize];
+                        screen[(n_current_y + py) as usize][(n_current_x + px - 2) as usize] =
+                            n_current_piece;
                     }
                 }
             }
@@ -273,6 +298,8 @@ fn main() -> Result<(), std::io::Error> {
                 cursor::Goto(N_FIELD_WIDTH as u16 + 6, 2),
                 n_score
             )?;
+
+            // Copy screen to the field before printing it
 
             for (y, row) in field.iter().enumerate() {
                 for (x, &ch) in row.iter().enumerate() {
