@@ -285,7 +285,7 @@ fn main() -> Result<(), std::io::Error> {
                         [rotate(px, py, n_current_rotation) as usize])
                         != 0
                     {
-                        screen[(n_current_y + py) as usize][(n_current_x + px - 2) as usize] =
+                        field[(n_current_y + py) as usize][(n_current_x + px - 2) as usize] =
                             n_current_piece;
                     }
                 }
@@ -298,8 +298,6 @@ fn main() -> Result<(), std::io::Error> {
                 cursor::Goto(N_FIELD_WIDTH as u16 + 6, 2),
                 n_score
             )?;
-
-            // Copy screen to the field before printing it
 
             for (y, row) in field.iter().enumerate() {
                 for (x, &ch) in row.iter().enumerate() {
